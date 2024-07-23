@@ -11,32 +11,32 @@ private fun Any.name() = when (this) {
 }
 
 /**
- * @throws CompositeUndefinedException always
+ * @throws NumericUndefinedException always
  */
-internal fun raiseUndefined(message: String): Nothing = throw CompositeUndefinedException(message)
+internal fun raiseUndefined(message: String): Nothing = throw NumericUndefinedException(message)
 
 /**
- * The name of the expected result may be inferred from the composite number receiver type or companion.
- * @throws CompositeOverflowException always
+ * The name of the expected result may be inferred from the receiver type.
+ * @throws NumericOverflowException always
  */
 internal fun Any.raiseOverflow(
     additionalInfo: String? = null,
     cause: Throwable? = null
 ): Nothing {
     val info = additionalInfo?.let { " ($it)" }.orEmpty()
-    throw CompositeOverflowException("${name()} overflows$info", cause)
+    throw NumericOverflowException("${name()} overflows$info", cause)
 }
 
 /**
- * The name of the expected result may be inferred from the composite number receiver type or companion.
- * @throws CompositeFormatException always
+ * The name of the expected result may be inferred from the receiver type.
+ * @throws NumericFormatException always
  */
 internal fun Any.raiseIncorrectFormat(
     reason: String,
     argument: String,
     cause: Throwable? = null
 ): Nothing {
-    throw CompositeFormatException(
+    throw NumericFormatException(
             "String \"$argument\" does not contain a ${name().lowercase()} in the correct format ($reason)", cause)
 }
 
@@ -58,30 +58,27 @@ internal fun Table<*>.raiseOutOfBounds(rowIndex: Int, columnIndex: Int): Nothing
 }
 
 /**
- * Thrown when an operation involving [composite numbers][CompositeNumber] or [matrices][Matrix]
- * cannot proceed due to overflow or an undefined result.
+ * Thrown when an operation involving numeric types cannot proceed due to overflow or underflow.
  */
-public class CompositeOverflowException internal constructor(
+public class NumericOverflowException internal constructor(
     message: String,
     cause: Throwable? = null
 ) : Exception(message, cause)
 
 /**
- * Thrown when an operation involving [composite numbers][CompositeNumber],
- * vectors[Vector] or [matrices][Matrix] has a result that is undefined.
+ * Thrown when an operation involving numeric types has a result that is undefined.
  *
  * To derive a non-real result, consider using [Complex].
  */
-public class CompositeUndefinedException internal constructor(
+public class NumericUndefinedException internal constructor(
     message: String,
     cause: Throwable? = null
 ) : Exception(message, cause)
 
 /**
- * Thrown from a `String`-arg pseudo-constructor for a [composite number][CompositeNumber] class to
- * indicate that the supplied string is malformed.
+ * Thrown from a `String`-arg pseudo-constructor for a numeric type to indicate that the supplied string is malformed.
  */
-public class CompositeFormatException internal constructor(
+public class NumericFormatException internal constructor(
     message: String,
     cause: Throwable? = null
 ) : Exception(message, cause)

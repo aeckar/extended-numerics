@@ -5,6 +5,8 @@ import io.github.aeckar.numerics.Rational.Companion.ZERO
 import io.github.aeckar.numerics.Rational.Companion.ONE
 import io.github.aeckar.numerics.utils.deepCopyOf
 import kotlinx.serialization.Contextual
+import kotlin.jvm.JvmName
+import kotlin.jvm.JvmStatic
 
 /**
  * Returns a matrix equal in value to the table of rational numbers.
@@ -65,7 +67,7 @@ public class Matrix internal constructor(backingArray: Array<Array<@Contextual A
         public operator fun invoke(vararg entries: Int): Matrix {
             ensureValidSize(entries.size)
             val entry = entries.iterator()
-            val table = Table(rows, columns) { _, _ -> entry.nextInt().toRational() }
+            val table = Table(rows, columns) { _, _ -> Rational(entry.nextInt()) }
             return Matrix(table)
         }
 
@@ -104,10 +106,10 @@ public class Matrix internal constructor(backingArray: Array<Array<@Contextual A
      * Returns the inverse of this matrix.
      *
      * The inverse is the matrix, when multiplied by this matrix, results in an identity matrix.
-     * @throws CompositeUndefinedException this matrix is not a square matrix
+     * @throws NumericUndefinedException this matrix is not a square matrix
      */
     public fun inverse(): Matrix {
-        "Inverse".requiresSquareMatrix()
+        requiresSquareMatrix("Inverse")
 
         TODO("Not implemented yet")
     }
@@ -155,11 +157,11 @@ public class Matrix internal constructor(backingArray: Array<Array<@Contextual A
      * Returns the determinant of this matrix.
      *
      * The determinant can be defined recursively as
-     * @throws CompositeUndefinedException this matrix is not square
+     * @throws NumericUndefinedException this matrix is not square
      */
     public fun determinant(): Rational {
-        "Determinant".requiresSquareMatrix()
-        return determinant(0, -1).immutable()
+        requiresSquareMatrix("Determinant")
+        return determinant(0, -1)
     }
 
     /**
@@ -180,7 +182,7 @@ public class Matrix internal constructor(backingArray: Array<Array<@Contextual A
         }
         var negateTerm = false
         var skippedColumn = false
-        val result = MutableRational(ZERO)
+        var result = ZERO
         repeat(sideLength) {
             if (it == columnPivot) {
                 skippedColumn = true
@@ -188,9 +190,9 @@ public class Matrix internal constructor(backingArray: Array<Array<@Contextual A
             val column = if (skippedColumn) it + 1 else it
             val term = this[rowPivot, column] * determinant(rowPivot + 1, column)
             if (negateTerm) {
-                result -/* = */ term
+                result -= term
             } else {
-                result +/* = */ term
+                result += term
             }
             negateTerm = !negateTerm
         }
@@ -201,13 +203,13 @@ public class Matrix internal constructor(backingArray: Array<Array<@Contextual A
      * Returns the trace of this matrix.
      *
      * The trace is the sum of all entries on the main diagonal.
-     * @throws CompositeUndefinedException this matrix is not square
+     * @throws NumericUndefinedException this matrix is not square
      */
     public fun trace(): Rational {
-        "Trace".requiresSquareMatrix()
-        val result = ZERO.mutable()
-        repeat(rows) { result +/* = */ this[it, it] }
-        return result.immutable()
+        requiresSquareMatrix("Trace")
+        var result = ZERO
+        repeat(rows) { result += this[it, it] }
+        return result
     }
 
     /**
@@ -234,11 +236,11 @@ public class Matrix internal constructor(backingArray: Array<Array<@Contextual A
      * Returns the minor, M, at the given entry.
      *
      * Since this implementation of the minor is by entry, the matrix must be square.
-     * @throws CompositeUndefinedException this matrix is not square
+     * @throws NumericUndefinedException this matrix is not square
      */
     @Suppress("MemberVisibilityCanBePrivate")
     public fun minor(rowIndex: Int, columnIndex: Int): Matrix {
-        "Minor".requiresSquareMatrix()
+        requiresSquareMatrix("Minor")
         return getMinor(rowIndex, columnIndex)
     }
 
@@ -246,10 +248,10 @@ public class Matrix internal constructor(backingArray: Array<Array<@Contextual A
      * Returns the cofactor, C, at the given entry.
      *
      * For the specific properties that are required in order to return a cofactor, see [minor].
-     * @throws CompositeUndefinedException this matrix is not square
+     * @throws NumericUndefinedException this matrix is not square
      */
     public fun cofactor(rowNumber: Int, columnNumber: Int): Matrix {
-        "Cofactor".requiresSquareMatrix()
+        requiresSquareMatrix("Cofactor")
         val minor = getMinor(rowNumber, columnNumber)
         return if ((rowNumber % 2 == 0) xor (columnNumber % 2 == 0)) -minor else minor
     }
@@ -287,20 +289,20 @@ public class Matrix internal constructor(backingArray: Array<Array<@Contextual A
      * Returns the result of this matrix added to the other.
      *
      * The addition is done by-entry, with the result having the same dimensions as the arguments.
-     * @throws CompositeOverflowException the two matrices are of different sizes
+     * @throws NumericOverflowException the two matrices are of different sizes
      */
-    public operator fun plus(other: Matrix): Matrix = add(other, Rational::plus)
+    public operator fun plus(other: Matrix): Matrix = plus(other, Rational::plus)
 
     /**
      * Returns the result of this matrix subtracted by the other.
      *
      * The subtraction is done by-entry, with the result having the same dimensions as the arguments.
-     * @throws CompositeUndefinedException the two matrices are of different sizes
-     * @throws CompositeOverflowException the result overflows
+     * @throws NumericUndefinedException the two matrices are of different sizes
+     * @throws NumericOverflowException the result overflows
      */
-    public operator fun minus(other: Matrix): Matrix = add(other, Rational::minus)
+    public operator fun minus(other: Matrix): Matrix = plus(other, Rational::minus)
 
-    private inline fun add(other: Matrix, operator: (Rational, Rational) -> Rational): Matrix {
+    private inline fun plus(other: Matrix, operator: (Rational, Rational) -> Rational): Matrix {
         if (rows != other.rows || columns != other.columns) {
             raiseUndefined("Addition is undefined for matrices of different dimensions")
         }
@@ -317,7 +319,7 @@ public class Matrix internal constructor(backingArray: Array<Array<@Contextual A
      * In other words, each entry becomes the sum of it multiplied by
      * each entry in each column of the other matrix, per column.
      * This is done for each row in this matrix.
-     * @throws CompositeUndefinedException the total columns in this matrix is not equal to the total rows of the other
+     * @throws NumericUndefinedException the total columns in this matrix is not equal to the total rows of the other
      */
     public operator fun times(other: Matrix): Matrix {
         if (columns != other.rows) {
@@ -327,14 +329,14 @@ public class Matrix internal constructor(backingArray: Array<Array<@Contextual A
             )
         }
         val table = MutableTable<Rational>(rows, other.columns)
-        val sum = MutableRational(ZERO)
+        var sum = ZERO
         forEachRow self@ {
             other.forEachColumn other@ {
                 forEachInRow entry@ { entry ->
-                    sum +/* = */ (entry * other[this@other.columnIndex, this@entry.columnIndex])
+                    sum += entry * other[this@other.columnIndex, this@entry.columnIndex]
                 }
-                table[this@self.rowIndex, columnIndex] = sum.immutable()
-                sum/* = */.valueOf(ZERO)
+                table[this@self.rowIndex, columnIndex] = sum
+                sum = ZERO
             }
         }
         return Matrix(table.backingArray)
@@ -356,9 +358,9 @@ public class Matrix internal constructor(backingArray: Array<Array<@Contextual A
 
     // ------------------------------ miscellaneous --------------------
 
-    private fun String.requiresSquareMatrix() {
+    private fun requiresSquareMatrix(operation: String) {
         if (rows != columns) {
-            raiseUndefined("$this is only defined for square matrices")
+            raiseUndefined("$operation is only defined for square matrices")
         }
     }
 

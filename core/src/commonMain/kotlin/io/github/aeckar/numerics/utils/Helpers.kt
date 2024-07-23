@@ -3,11 +3,6 @@ package io.github.aeckar.numerics.utils
 internal const val LONG_MAX_STRING = "9223372036854775807"
 
 /**
- * Passed to a constructor of a class to distinguish it from a pseudo-constructor with the same arguments.
- */
-internal object PrivateAPIFlag
-
-/**
  * C-style boolean-to-integer conversion. 1 if true, 0 if false.
  */
 internal fun Boolean.toInt() = if (this) 1 else 0
@@ -38,6 +33,14 @@ internal fun tenPow(scale: Int): Long {
  * @return the sign of the product/quotient of the two values
  */
 internal fun productSign(x: Int, y: Int) = if ((x < 0) == (y < 0)) 1 else -1
+
+/**
+ * Returns true if the sum is the result of a signed integer overflow.
+ *
+ * If a result of multiple additions must be checked, this function must be called for each intermediate sum.
+ * Also checks for the case [Int.MIN_VALUE] - 1.
+ */
+internal fun addOverflowsValue(x: Int, y: Int) = (x.toLong() + y) !in Int.MIN_VALUE..Int.MAX_VALUE
 
 @PublishedApi
 internal fun twoDimensionalArray(rows: Int, columns: Int, defaultEntry: Any? = null): Array<Array<Any?>> {

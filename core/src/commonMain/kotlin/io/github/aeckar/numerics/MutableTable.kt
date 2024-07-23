@@ -3,6 +3,8 @@
 package io.github.aeckar.numerics
 
 import io.github.aeckar.numerics.utils.twoDimensionalArray
+import kotlin.jvm.JvmMultifileClass
+import kotlin.jvm.JvmName
 
 /**
  * Returns a mutable table with the given dimensions, with each entry initialized according to the given logic.
@@ -47,7 +49,7 @@ public class MutableTable<E : Any> @PublishedApi internal constructor(
     public operator fun set(rowNumber: Int, columnNumber: Int, entry: E) {
         try {
             backingArray[rowNumber][columnNumber] = entry
-        } catch (e: ArrayIndexOutOfBoundsException) {
+        } catch (e: IndexOutOfBoundsException) {
             raiseOutOfBounds(rowNumber, columnNumber)
         }
     }

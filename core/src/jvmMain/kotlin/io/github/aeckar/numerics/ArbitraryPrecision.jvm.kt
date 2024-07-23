@@ -7,19 +7,13 @@ import java.math.BigDecimal
 import java.math.BigInteger
 import java.nio.ByteBuffer
 
-private val LONG_MAX_INTEGER = Long.MAX_VALUE.toBigInteger()
-private val INT128_DECIMALS = Int128.MIN_VALUE.toBigDecimal()..Int128.MAX_VALUE.toBigDecimal()
-private val INT128_INTEGERS = Int128.MIN_VALUE.toBigInteger()..Int128.MAX_VALUE.toBigInteger()
-private val RATIONAL_DECIMALS = Rational.MIN_VALUE.toBigDecimal()..Rational.MAX_VALUE.toBigDecimal()
-private val RATIONAL_INTEGERS = Rational.MIN_VALUE.toBigInteger()..Rational.MAX_VALUE.toBigInteger()
-
 /**
  * Returns a scaled, 64-bit integer equal to the absolute value of [value].
  */
 private fun ScaledLong(value: BigInteger): ScaledLong {
     var int = value.abs()
     var scale = 0
-    while (int > LONG_MAX_INTEGER) {
+    while (int > Long.MAX_VALUE.toBigInteger()) {
         // Realistically, we could count up to a certain number of bits, but this way is more accurate
         int /= BigInteger.TEN
         ++scale
@@ -36,14 +30,16 @@ private fun ScaledLong(value: BigInteger): ScaledLong {
  * @see Int128.MIN_VALUE
  * @see Int128.MAX_VALUE
  */
-public fun isInt128(value: BigDecimal): Boolean = value in INT128_DECIMALS
+public fun isInt128(value: BigDecimal): Boolean =
+    value in Int128.MIN_VALUE.toBigDecimal()..Int128.MAX_VALUE.toBigDecimal()
 
 /**
  * Returns true if the given value can fit within a 128-bit integer.
  * @see Int128.MIN_VALUE
  * @see Int128.MAX_VALUE
  */
-public fun isInt128(value: BigInteger): Boolean = value in INT128_INTEGERS
+public fun isInt128(value: BigInteger): Boolean =
+    value in Int128.MIN_VALUE.toBigInteger()..Int128.MAX_VALUE.toBigInteger()
 
 /**
  * Compares this value to the other.
@@ -112,14 +108,16 @@ public fun Int128(value: BigInteger): Int128 {
  * @see Rational.MIN_VALUE
  * @see Rational.MAX_VALUE
  */
-public fun isRational(value: BigDecimal): Boolean = value in RATIONAL_DECIMALS
+public fun isRational(value: BigDecimal): Boolean =
+    value in Rational.MIN_VALUE.toBigDecimal()..Rational.MAX_VALUE.toBigDecimal()
 
 /**
  * Returns true if the given value can fit within a [Rational].
  * @see Rational.MIN_VALUE
  * @see Rational.MAX_VALUE
  */
-public fun isRational(value: BigInteger): Boolean = value in RATIONAL_INTEGERS
+public fun isRational(value: BigInteger): Boolean =
+    value in Rational.MIN_VALUE.toBigInteger()..Rational.MAX_VALUE.toBigInteger()
 
 /**
  * Compares this value to the other.

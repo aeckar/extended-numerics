@@ -1,6 +1,7 @@
 package io.github.aeckar.numerics.utils
 
 import io.github.aeckar.numerics.Int128
+import io.github.aeckar.numerics.Rational
 import io.github.aeckar.numerics.raiseIncorrectFormat
 
 /**
@@ -17,8 +18,8 @@ internal class ScaledLong {
      */
     constructor(i128: Int128, scaleAugment: Int = 0) {
         if (i128.compareTo(Long.MIN_VALUE) == 0) {
-            this.value = 9223372036854775800L
-            this.scale = 0
+            this.value = LONG_MIN.value
+            this.scale = LONG_MIN.scale
             return
         }
         if (i128.isLong()) {
@@ -57,6 +58,8 @@ internal class ScaledLong {
     override fun toString() = if (scale < 0) "$value * 10^($scale)" else "$value * 10^$scale"
 
     companion object {
+        internal val LONG_MIN = ScaledLong(92233720368547758, 2)
+
         private val ZERO = ScaledLong(0, 0)
 
         /**

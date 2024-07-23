@@ -9,7 +9,7 @@ allprojects {
 
 nexusPublishing {
     repositories {
-        sonatype {  // TODO
+        sonatype {  // TODO set up
             nexusUrl.set(uri("https://s01.oss.sonatype.org/service/local/"))
             snapshotRepositoryUrl.set(uri("https://s01.oss.sonatype.org/content/repositories/snapshots/"))
         }

@@ -1,6 +1,7 @@
 pluginManagement {
     includeBuild("convention-plugins")
     repositories {
+        google()
         mavenCentral()
         gradlePluginPortal()
     }
@@ -9,6 +10,7 @@ pluginManagement {
 @Suppress("UnstableApiUsage")
 dependencyResolutionManagement {
     repositories {
+        google()
         mavenCentral()
     }
 }

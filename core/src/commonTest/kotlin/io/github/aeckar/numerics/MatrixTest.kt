@@ -1,11 +1,8 @@
 package io.github.aeckar.numerics
 
-import org.junit.experimental.runners.Enclosed
-import org.junit.runner.RunWith
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-@RunWith(Enclosed::class)
 class MatrixTest {
     class Transformation {
         // TODO

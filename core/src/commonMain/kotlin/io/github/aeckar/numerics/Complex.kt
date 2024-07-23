@@ -1,6 +1,6 @@
 package io.github.aeckar.numerics
 
-import io.github.aeckar.numerics.functions.sqrt
+import kotlin.jvm.JvmStatic
 
 /**
  * A complex number.
@@ -8,32 +8,15 @@ import io.github.aeckar.numerics.functions.sqrt
  * @param real the constant added to the imaginary term
  * @param imaginary the coefficient multiplied by the imaginary unit [i][I]
  */
-public class Complex(public val real: Rational, public val imaginary: Rational) {
+public class Complex(real: Rational, imaginary: Rational) : Vector2(real, imaginary) {
+    public val real: Rational inline get() = first
+    public val imaginary: Rational inline get() = second
+
     /**
      * Returns the complex conjugate of this.
      * @return a complex number equal to this whose [imaginary][imaginary] part is negated
      */
     public fun conjugate(): Complex = Complex(real, -imaginary)
-
-    /**
-     * Returns the magnitude (absolute value) of this.
-     */
-    public fun magnitude(): Rational = sqrt(real.pow(2) + imaginary.pow(2))
-
-    /**
-     * Returns a complex number equal in value to this, negated.
-     */
-    public operator fun unaryMinus(): Complex = Complex(-real, -imaginary)
-
-    /**
-     * Returns a complex number equal in value to the sum.
-     */
-    public operator fun plus(other: Complex): Complex = Complex(real + other.real, imaginary + other.imaginary)
-
-    /**
-     * Returns a complex number equal in value to the difference.
-     */
-    public operator fun minus(other: Complex): Complex = this + (-other)
 
     /**
      * Returns a complex number equal in value to the product.

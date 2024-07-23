@@ -9,6 +9,7 @@ plugins {
 
 publishing {
     publications.withType<MavenPublication> {
+        // TODO finalize
         // Stub javadoc.jar artifact
         artifact(tasks.register("${name}JavadocJar", Jar::class) {
             archiveClassifier.set("javadoc")

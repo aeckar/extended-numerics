@@ -1,5 +1,5 @@
-@file:JvmName("Functions")
-@file:JvmMultifileClass
+@file:kotlin.jvm.JvmName("Functions")
+@file:kotlin.jvm.JvmMultifileClass
 package io.github.aeckar.numerics.functions
 
 import io.github.aeckar.numerics.Int128
@@ -44,7 +44,6 @@ private val INT128_FACTORIALS = arrayOf(
 /**
  * Avoids the overhead of creating a new exception every time this happens.
  */
-@Suppress("JavaIoSerializableObjectMustHaveReadResolve")
 internal object FactorialOverflowSignal : Throwable()
 
 /**

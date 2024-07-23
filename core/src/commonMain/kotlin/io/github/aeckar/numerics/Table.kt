@@ -6,6 +6,8 @@ import io.github.aeckar.numerics.utils.deepCopyOf
 import io.github.aeckar.numerics.utils.twoDimensionalArray
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
+import kotlin.jvm.JvmMultifileClass
+import kotlin.jvm.JvmName
 
 /**
  * Returns an immutable table with the given dimensions, with each entry initialized according to the given logic.
@@ -28,7 +30,7 @@ public inline fun <E : Any> Table(
 public fun <E : Any> Table(rows: Int, columns: Int, defaultEntry: E? = null): Table<E> {
     return try {
         Table(twoDimensionalArray(rows, columns, defaultEntry))
-    } catch (e: NegativeArraySizeException) {
+    } catch (e: IllegalArgumentException) { // Negative array size
         raiseInvalidDimensions(rows, columns, e)
     }
 }
@@ -79,8 +81,8 @@ public open class Table<E : Any> @PublishedApi internal constructor(
         return try {
             backingArray[rowNumber][columnNumber] as E
         } catch (e: NullPointerException) {
-            throw NoSuchElementException("Attempted access of uninitialized table element", e)
-        } catch (_: ArrayIndexOutOfBoundsException) {
+            throw NoSuchElementException("Attempted access of uninitialized table element")
+        } catch (_: IndexOutOfBoundsException) {
             raiseOutOfBounds(rowNumber, columnNumber)
         }
     }

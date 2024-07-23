@@ -1,74 +1,17 @@
-@file:JvmName("Int128s")
+@file:kotlin.jvm.JvmName("Numerics")
+@file:kotlin.jvm.JvmMultifileClass
 package io.github.aeckar.numerics
 
 import io.github.aeckar.numerics.functions.FactorialOverflowSignal
 import io.github.aeckar.numerics.functions.signallingFactorial
 import io.github.aeckar.numerics.utils.*
-import kotlinx.serialization.KSerializer
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.descriptors.SerialDescriptor
-import kotlinx.serialization.descriptors.buildClassSerialDescriptor
-import kotlinx.serialization.descriptors.element
-import kotlinx.serialization.encoding.*
+import kotlin.jvm.JvmStatic
 import kotlin.math.sign
-import kotlin.random.Random
-
-/**
- * Multiplies the two 64-bit integers and stores the result accurately within a 128-bit integer.
- */
-internal infix fun Long.times(other: Long): MutableInt128 {
-    fun multiplyValueOverflows(x: Long, y: Long, product: Long = x * y): Boolean {
-        if (x == Long.MIN_VALUE && y == -1L || y == Long.MIN_VALUE && x == -1L) {
-            return true
-        }
-        return x != 0L && y != 0L && x != product / y
-    }
-    val product = this * other
-    if (multiplyValueOverflows(this, other, product)) {
-        return (MutableInt128(this) * Int128(other)).mutable()
-    }
-    return MutableInt128(product)
-}
-
-/**
- * Returns a 128-bit integer with its lowest 32 bits equivalent to the given value.
- *
- * Performs the same widening conversion as a primitive type would.
- * As such, the sign of the original value is preserved.
- * If this value is associated with a reusable constant, that instance is returned instead.
- *
- * For numbers that are known to be smaller than -1 or larger than 16,
- * the `Int`-arg constructor should be used instead.
- */
-@JvmName("instanceOf")
-public fun Int.toInt128(): Int128 = when (this) {
-    -1 -> Int128.NEGATIVE_ONE
-    0 -> Int128.ZERO
-    1 -> Int128.ONE
-    2 -> Int128.TWO
-    10 -> Int128.TEN
-    16 -> Int128.SIXTEEN
-    else -> Int128(this)
-}
-
-/**
- * See [toInt128] for details.
- */
-@JvmName("instanceOf")
-public fun Long.toInt128(): Int128 = when (this) {
-    -1L -> Int128.NEGATIVE_ONE
-    0L -> Int128.ZERO
-    1L -> Int128.ONE
-    2L -> Int128.TWO
-    10L -> Int128.TEN
-    16L -> Int128.SIXTEEN
-    else -> Int128(this)
-}
 
 /**
  * Returns a random 128-bit integer.
  */
-public fun Random.nextInt128(): Int128 {
+public fun kotlin.random.Random.nextInt128(): Int128 {
     val mag = nextInt(1, 5)
     return Int128(
         nextInt(),
@@ -79,71 +22,17 @@ public fun Random.nextInt128(): Int128 {
 }
 
 /**
- * Returns a 128-bit integer with its lowest 64 bits equivalent to the given value.
- *
- * Performs the same widening conversion as a primitive type would.
- * As such, the sign of the original value is preserved.
- */
-@JvmName("newInstance")
-public fun Int128(q3q4: Long): Int128 = Int128(q3q4, PrivateAPIFlag)
-
-/**
- * Returns a 128-bit integer with its lowest 32 bits equivalent to the given value.
- *
- * Performs the same widening conversion as a primitive type would.
- * As such, the sign of the original value is preserved.
- *
- * For numbers that are known to be between -1 and 16, inclusive,
- * [Int.toInt128] should be used instead.
- */
-@JvmName("newInstance")
-public fun Int128(q4: Int): Int128 {
-    val blank = Int128.blank(q4.sign)
-    return Int128(blank, blank, blank, q4, PrivateAPIFlag)
-}
-
-/**
- * Returns a 128-bit integer with the specified bits.
- *
- * Each quarter consists of 32 bits.
- * If the highest bit of [q1] is 1, the returned value is [negative][Int128.isNegative].
- */
-@JvmName("newInstance")
-public fun Int128(q1: Int, q2: Int, q3: Int, q4: Int): Int128 = Int128(q1, q2, q3, q4, PrivateAPIFlag)
-
-/**
- * Returns a 128-bit integer equal in value to the given string.
- *
- * A correctly formatted string contains only a sequence of digits agreeing with the given [radix].
- * Leading 0 digits are allowed.
- *
- * The given string must be small enough to be representable and
- * not contain any extraneous characters (for example, whitespace).
- * It may optionally be prefixed by a negative sign.
- *
- * @throws CompositeFormatException [s] is in an incorrect format
- * @throws CompositeOverflowException the value cannot be represented accurately as a 128-bit integer
- * @throws IllegalArgumentException [radix] is negative or over 36
- */
-@JvmName("newInstance")
-public fun Int128(s: String, radix: Int = 10, start: Int = 0, endExclusive: Int = s.length): Int128 {
-    // Any radix above base-36 requires use of non-alphanumeric digits
-    require(radix in 0..36) { "illegal radix" }
-    return Int128.parse(s, radix, start, endExclusive).immutable()
-}
-
-/**
  * A 128-bit integer in two's complement format.
  *
  * Operations performed on instances of this class are analogous to those of built-in integer types, where:
  * - The most significant bit (of the [upper half][high]) determines the sign
  * - Result of division and remainder are truncated
  *
- * Unlike primitive types, operations will throw [CompositeOverflowException] on overflow or underflow.
+ * Unlike primitive types, operations will throw [NumericOverflowException] on overflow or underflow.
  */
-@Serializable(with = Int128.Serializer::class)
+@kotlinx.serialization.Serializable(with = io.github.aeckar.numerics.serializers.Int128Serializer::class)
 @Suppress("EqualsOrHashCode")
-public open class Int128 : CompositeNumber<Int128> {
+public open class Int128 : Real<Int128> {
     public var q1: Int
         protected set
     public var q2: Int
@@ -154,20 +43,94 @@ public open class Int128 : CompositeNumber<Int128> {
         protected set
 
     final override val sign: Int get() = if (isNegative) -1 else 1
-
     final override val isNegative: Boolean get() = q1 < 0
     final override val isPositive: Boolean get() = q1 >= 0
 
-    @Suppress("UNUSED_PARAMETER")
-    internal constructor(q1: Int, q2: Int, q3: Int, q4: Int, privateAPIFlag: PrivateAPIFlag) : super() {
+    /**
+     * Returns a 128-bit integer equal in value to the given string.
+     *
+     * A correctly formatted string contains only a sequence of digits agreeing with the given [radix].
+     * Leading 0 digits are allowed.
+     *
+     * The given string must be small enough to be representable and
+     * not contain any extraneous characters (for example, whitespace).
+     * It may optionally be prefixed by a negative sign.
+     *
+     * @throws NumericFormatException [s] is in an incorrect format
+     * @throws NumericOverflowException the value cannot be represented accurately as a 128-bit integer
+     * @throws IllegalArgumentException [radix] is negative or over 36
+     */
+    public constructor(s: String, radix: Int = 10, start: Int = 0, endExclusive: Int = s.length) {
+        // Any radix above base-36 requires use of non-alphanumeric digits
+        require(radix in 0..36) { "illegal radix" }
+        val first = try {
+            s[start]
+        } catch (e: IndexOutOfBoundsException) {
+            Int128.raiseIncorrectFormat("empty string", s)
+        }
+        var cursor = endExclusive - 1
+        val startIndex = start + (first == '-').toInt()
+        val digit = MutableInt128(ZERO)
+        val value = MutableInt128(ZERO)
+        var pow = ONE
+        val increment = radix.toInt128()
+        while (cursor >= startIndex) try {
+            if (s[cursor] !in '0'..'9') {
+                Int128.raiseIncorrectFormat("illegal embedded character", s)
+            }
+            digit.store(s[cursor].digitToInt(radix))
+            digit *= pow
+            value += digit
+            pow *= increment
+            --cursor
+        } catch (e: IllegalArgumentException) {
+            Int128.raiseIncorrectFormat("illegal digit", s, e)
+        } catch (e: NumericOverflowException) {
+            Int128.raiseOverflow(s.substring(start, endExclusive), e)
+        }
+        if (startIndex != start) {
+            value.storeNegate()
+        }
+        this.q1 = value.q1
+        this.q2 = value.q2
+        this.q3 = value.q3
+        this.q4 = value.q4
+    }
+
+    /**
+     * Returns a 128-bit integer with the specified bits.
+     *
+     * Each quarter consists of 32 bits.
+     * If the highest bit of [q1] is 1, the returned value is [negative][Int128.isNegative].
+     */
+    public constructor(q1: Int, q2: Int, q3: Int, q4: Int) : super() {
         this.q1 = q1
         this.q2 = q2
         this.q3 = q3
         this.q4 = q4
     }
 
-    @Suppress("UNUSED_PARAMETER")
-    internal constructor(q3q4: Long, privateAPIFlag: PrivateAPIFlag) {
+    /**
+     * Returns a 128-bit integer with its lowest 32 bits equivalent to the given value.
+     *
+     * Performs the same widening conversion as a primitive type would.
+     * As such, the sign of the original value is preserved.
+     */
+    public constructor(q4: Int) {
+        val blank = blank(q4.sign)
+        this.q1 = blank
+        this.q2 = blank
+        this.q3 = blank
+        this.q4 = q4
+    }
+
+    /**
+     * Returns a 128-bit integer with its lowest 64 bits equivalent to the given value.
+     *
+     * Performs the same widening conversion as a primitive type would.
+     * As such, the sign of the original value is preserved.
+     */
+    public constructor(q3q4: Long) {
         this.q3 = q3q4.high
         val blank = blank(q3.sign)
         this.q1 = blank
@@ -175,49 +138,17 @@ public open class Int128 : CompositeNumber<Int128> {
         this.q4 = q3q4.low
     }
 
-    /**
-     * *kotlinx.serialization* serializer for 128-bit integers.
-     */
-    public object Serializer : KSerializer<Int128> {
-        override val descriptor: SerialDescriptor = buildClassSerialDescriptor("Int128") {
-            element<Int>("q1")
-            element<Int>("q2")
-            element<Int>("q3")
-            element<Int>("q4")
-        }
-
-        override fun deserialize(decoder: Decoder): Int128 = decoder.decodeStructure(descriptor) {
-            var q1 = 0
-            var q2 = 0
-            var q3 = 0
-            var q4 = 0
-            while (true) {
-                when (val index = decodeElementIndex(descriptor)) {
-                    0 -> q1 = decodeIntElement(descriptor, 0)
-                    1 -> q2 = decodeIntElement(descriptor, 1)
-                    2 -> q3 = decodeIntElement(descriptor, 2)
-                    3 -> q4 = decodeIntElement(descriptor, 3)
-                    CompositeDecoder.DECODE_DONE -> break
-                    else -> error("Unexpected index: $index")
-                }
-            }
-            Int128(q1, q2, q3, q4)
-        }
-
-        override fun serialize(encoder: Encoder, value: Int128) {
-            encoder.encodeStructure(descriptor) {
-                encodeIntElement(descriptor, 0, value.q1)
-                encodeIntElement(descriptor, 1, value.q2)
-                encodeIntElement(descriptor, 2, value.q3)
-                encodeIntElement(descriptor, 3, value.q4)
-            }
-        }
+    internal constructor(other: MutableInt128) {
+        this.q1 = other.q1
+        this.q2 = other.q2
+        this.q3 = other.q3
+        this.q4 = other.q4
     }
 
     private enum class DivisionType {
         QUOTIENT, REMAINDER, BOTH;
 
-        @Suppress("UNCHECKED_CAST")
+        @Suppress("UNCHECKED_CAST", "IMPLICIT_CAST_TO_ANY")
         inline fun <T : Any> result(quotient: () -> Int128, remainder: () -> Int128): T {
             return when (this@DivisionType) {
                 QUOTIENT -> quotient()
@@ -229,41 +160,21 @@ public open class Int128 : CompositeNumber<Int128> {
 
     // ---------------------------------------- mutability ----------------------------------------
 
-    override fun immutable() = this
-
-    @Cumulative
-    override fun mutable() = MutableInt128(this)
-
-    final override fun uniqueMutable() = MutableInt128(this)
-
-    @Cumulative
-    final override fun valueOf(other: Int128) = with (other) { this@Int128.valueOf(q1, q2, q3, q4) }
+    /**
+     * Returns a 128-bit integer equal in value to [other] with the same mutability as this.
+     */
+    internal open fun out(other: Int128): Int128 = if (other is MutableInt128) Int128(other) else other
 
     /**
-     * Value function with delegation to by-property pseudo-constructor.
+     * When this is guaranteed to be immutable, use the `MutableInt128`-arg constructor instead.
      */
-    @Cumulative
-    protected open fun valueOf(q1: Int, q2: Int, q3: Int, q4: Int): Int128 = Int128(q1, q2, q3, q4)
+    internal open fun toMutable(): MutableInt128 = MutableInt128(this)
 
-    /**
-     * Value function with delegation to `Long`-arg pseudo-constructor.
-     */
-    @Cumulative
-    protected open fun valueOf(q3q4: Long): Int128 = Int128(q3q4)
+    internal open fun copy() = this
 
-    /**
-     * If this is mutable, returns the given instance. Else, returns an immutable copy.
-     *
-     * Avoids defensive copying to an immutable instance for receivers performing intermediate operations.
-     * Intended for use by non-cumulative operations only.
-     */
-    protected open fun out(operationResult: Int128): Int128 = operationResult.immutable()
-
-    /**
-     * Value function with delegation to fourth-quarter constructor.
-     */
-    @Cumulative
-    internal fun valueOf(q4: Int) = valueOf(0, 0, 0, q4)
+    private fun copyOrStore(inPlace: Boolean, q1: Int, q2: Int, q3: Int, q4: Int): Int128 {
+        return if (inPlace) (this as MutableInt128).store(q1, q2, q3, q4) else Int128(q1, q2, q3, q4)
+    }
 
     // ---------------------------------------- partitions ----------------------------------------
 
@@ -340,24 +251,24 @@ public open class Int128 : CompositeNumber<Int128> {
      * Performs a bitwise inversion on this value and returns the result.
      */
     @Suppress("unused")
-    @Cumulative
-    public fun inv(): Int128 = valueOf(q1.inv(), q2.inv(), q3.inv(), q4.inv())
+    public fun inv(): Int128 = Int128(q1.inv(), q2.inv(), q3.inv(), q4.inv())
 
     /**
      * Performs a bitwise left shift on this value and returns the result.
      *
-     * If shifted by more than 128 bits, returns [zero][ZERO].
+     * If shifted by more than 128 bits, returns [0][ZERO].
+     * This is in contrast to the behavior of primitive integers, where the bit count overflows when above `SIZE_BITS`.
      * @throws IllegalArgumentException [bitCount] is negative
      */
     public infix fun shl(bitCount: Int): Int128 {
         ensureValidShift(bitCount)
-        return leftShift(bitCount)
+        return leftShift(bitCount, inPlace = false)
     }
 
     /**
      * Assumes [bitCount] is non-negative.
      */
-    private fun leftShift(bitCount: Int): Int128 {
+    internal fun leftShift(bitCount: Int, inPlace: Boolean): Int128 {
         /**
          * Returns the quarter at the current position after a left shift.
          */
@@ -372,19 +283,22 @@ public open class Int128 : CompositeNumber<Int128> {
         val qShift = bitCount % Int.SIZE_BITS
         val qMove = bitCount / Int.SIZE_BITS
         return if (qShift != 0) when (qMove) {
-            0 -> valueOf(q(q1, q2, qShift), q(q2, q3, qShift), q(q3, q4, qShift), q4 shl qShift)
-            1 -> valueOf(q(q2, q3, qShift), q(q3, q4, qShift), q4 shl qShift, 0)
-            2 -> valueOf(q(q3, q4, qShift), q4 shl qShift, 0, 0)
-            else /* = 3 */ -> valueOf(q4 shl qShift, 0, 0, 0)
+            0 -> copyOrStore(inPlace, q(q1, q2, qShift), q(q2, q3, qShift), q(q3, q4, qShift), q4 shl qShift)
+            1 -> copyOrStore(inPlace, q(q2, q3, qShift), q(q3, q4, qShift), q4 shl qShift, 0)
+            2 -> copyOrStore(inPlace, q(q3, q4, qShift), q4 shl qShift, 0, 0)
+            else /* = 3 */ -> copyOrStore(inPlace, q4 shl qShift, 0, 0, 0)
         } else when (qMove) {
-            1 -> valueOf(q2, q3, q4, 0)
-            2 -> valueOf(q3, q4, 0, 0)
-            else /* = 3 */ -> valueOf(q4, 0, 0, 0)
+            1 -> copyOrStore(inPlace, q2, q3, q4, 0)
+            2 -> copyOrStore(inPlace, q3, q4, 0, 0)
+            else /* = 3 */ -> copyOrStore(inPlace, q4, 0, 0, 0)
         }
     }
 
     /**
      * Performs a bitwise signed right shift on this value and returns the result.
+     *
+     * If shifted by more than 128 bits, returns [0][ZERO] if positive, or [-1][NEGATIVE_ONE] if negative.
+     * This is in contrast to the behavior of primitive integers, where the bit count overflows when above `SIZE_BITS`.
      */
     public infix fun shr(bitCount: Int): Int128 {
         ensureValidShift(bitCount)
@@ -400,34 +314,37 @@ public open class Int128 : CompositeNumber<Int128> {
         }
         val blank = blank()
         if (bitCount >= 128) {
-            return valueOf(blank, blank, blank, blank)
+            return Int128(blank, blank, blank, blank)
         }
         val qShift = bitCount % Int.SIZE_BITS
         val qMove = bitCount / Int.SIZE_BITS
         return if (qShift != 0) when (qMove) {
-            0 -> valueOf(q1 shr qShift, q(q1, q2, qShift), q(q2, q3, qShift), q(q3, q4, qShift))
-            1 -> valueOf(blank, q1 shr qShift, q(q1, q2, qShift), q(q2, q3, qShift))
-            2 -> valueOf(blank, blank, q1 shr qShift, q(q1, q2, qShift))
-            else /* = 3 */ -> valueOf(blank, blank, blank, q1 shr qShift)
+            0 -> Int128(q1 shr qShift, q(q1, q2, qShift), q(q2, q3, qShift), q(q3, q4, qShift))
+            1 -> Int128(blank, q1 shr qShift, q(q1, q2, qShift), q(q2, q3, qShift))
+            2 -> Int128(blank, blank, q1 shr qShift, q(q1, q2, qShift))
+            else /* = 3 */ -> Int128(blank, blank, blank, q1 shr qShift)
         } else when (qMove) {
-            1 -> valueOf(blank, q1, q2, q3)
-            2 -> valueOf(blank, blank, q1, q2)
-            else /* = 3 */ -> valueOf(blank, blank, blank, q1)
+            1 -> Int128(blank, q1, q2, q3)
+            2 -> Int128(blank, blank, q1, q2)
+            else /* = 3 */ -> Int128(blank, blank, blank, q1)
         }
     }
 
     /**
      * Performs a bitwise unsigned right shift on this value and returns the result.
+     *
+     * If shifted by more than 128 bits, returns [0][ZERO].
+     * This is in contrast to the behavior of primitive integers, where the bit count overflows when above `SIZE_BITS`.
      */
     public infix fun ushr(bitCount: Int): Int128 {
         ensureValidShift(bitCount)
-        return unsignedRightShift(bitCount)
+        return unsignedRightShift(bitCount, inPlace = false)
     }
 
     /**
      * Assumes [bitCount] is non-negative.
      */
-    private fun unsignedRightShift(bitCount: Int): Int128 {
+    internal fun unsignedRightShift(bitCount: Int, inPlace: Boolean): Int128 {
         if (bitCount == 0) {
             return this
         }
@@ -437,69 +354,68 @@ public open class Int128 : CompositeNumber<Int128> {
         val qShift = bitCount % Int.SIZE_BITS
         val qMove = bitCount / Int.SIZE_BITS
         return if (qShift != 0) when (qMove) {
-            0 -> valueOf(q1 ushr qShift, q(q1, q2, qShift), q(q2, q3, qShift), q(q3, q4, qShift))
-            1 -> valueOf(0, q1 ushr qShift, q(q1, q2, qShift), q(q2, q3, qShift))
-            2 -> valueOf(0, 0, q1 ushr qShift, q(q1, q2, qShift))
-            else /* = 3 */ -> valueOf(0, 0, 0, q1 ushr qShift)
+            0 -> copyOrStore(inPlace, q1 ushr qShift, q(q1, q2, qShift), q(q2, q3, qShift), q(q3, q4, qShift))
+            1 -> copyOrStore(inPlace, 0, q1 ushr qShift, q(q1, q2, qShift), q(q2, q3, qShift))
+            2 -> copyOrStore(inPlace, 0, 0, q1 ushr qShift, q(q1, q2, qShift))
+            else /* = 3 */ -> copyOrStore(inPlace, 0, 0, 0, q1 ushr qShift)
         } else when (qMove) {
-            1 -> valueOf(0, q1, q2, q3)
-            2 -> valueOf(0, 0, q1, q2)
-            else /* = 3 */ -> valueOf(0, 0, 0, q1)
+            1 -> copyOrStore(inPlace, 0, q1, q2, q3)
+            2 -> copyOrStore(inPlace, 0, 0, q1, q2)
+            else /* = 3 */ -> copyOrStore(inPlace, 0, 0, 0, q1)
         }
     }
+
 
     /**
      * Computes the bitwise `and` of the two values and returns the result.
      */
     @Suppress("unused")
-    @Cumulative
     public infix fun and(other: Int128): Int128 {
-        return valueOf(q1 and other.q1, q2 and other.q2, q3 and other.q3, q4 and other.q4)
+        return Int128(q1 and other.q1, q2 and other.q2, q3 and other.q3, q4 and other.q4)
     }
 
     /**
      * Computes the bitwise `or` of the two values and returns the result.
      */
     @Suppress("unused")
-    @Cumulative
     public infix fun or(other: Int128): Int128 {
-        return valueOf(q1 or other.q1, q2 or other.q2, q3 or other.q3, q4 or other.q4)
+        return Int128(q1 or other.q1, q2 or other.q2, q3 or other.q3, q4 or other.q4)
     }
 
     /**
      * Computes the bitwise `xor` of the two values and returns the result.
      */
     @Suppress("unused")
-    @Cumulative
     public infix fun xor(other: Int128): Int128 {
-        return valueOf(q1 xor other.q1, q2 xor other.q2, q3 xor other.q3, q4 xor other.q4)
+        return Int128(q1 xor other.q1, q2 xor other.q2, q3 xor other.q3, q4 xor other.q4)
     }
 
     // ---------------------------------------- arithmetic ----------------------------------------
 
-    @Cumulative
+    // Supports augmented assignment
     final override operator fun unaryMinus(): Int128 {
         if (this stateEquals MIN_VALUE) {
             raiseOverflow("-Int128.MIN_VALUE")
         }
-        return addOne(q1.inv(), q2.inv(), q3.inv(), q4.inv())
+        return increment(q1.inv(), q2.inv(), q3.inv(), q4.inv(), inPlace = false)
     }
 
-    private fun addOne(q1: Int, q2: Int, q3: Int, q4: Int): Int128 {
+    // Supports augmented assignment
+    internal fun increment(q1: Int, q2: Int, q3: Int, q4: Int, inPlace: Boolean): Int128 {
         val q4plus1 = q4 + 1
         var q3plus1 = q3
         var q2plus1 = q2
         var q1plus1 = q1
-        if (addOverflowsInt(q4, 1)) {
+        if (unsignedAddOverflows(q4, 1)) {
             ++q3plus1
-            if (addOverflowsInt(q3, 1)) {
+            if (unsignedAddOverflows(q3, 1)) {
                 ++q2plus1
-                if (addOverflowsInt(q2, 1)) {
+                if (unsignedAddOverflows(q2, 1)) {
                     ++q1plus1
                 }
             }
         }
-        return valueOf(q1plus1, q2plus1, q3plus1, q4plus1)
+        return copyOrStore(inPlace, q1plus1, q2plus1, q3plus1, q4plus1)
     }
 
     final override fun pow(power: Int): Int128 {
@@ -509,13 +425,13 @@ public open class Int128 : CompositeNumber<Int128> {
             power == 0 -> return ONE
         }
         var pow = power
-        val result = ONE.mutable()
-        val product = this.mutable()
+        val result = MutableInt128(ONE)
+        val product = this.toMutable()
         while (pow != 0) {
             if (pow and 1 == 1) {
-                result */* = */ product
+                result *= product
             }
-            product */* = */ product
+            product *= product
             pow = pow ushr 1
         }
         return out(result)
@@ -524,8 +440,10 @@ public open class Int128 : CompositeNumber<Int128> {
     final override fun signum(): Int = if (q4 == 0 && q3 == 0 && q2 == 0 && q1 == 0) 0 else sign
     
     // ((a << 32) + b) + ((c << 1) + d) = ((a + c) << 32) + (b + d)
-    @Cumulative
-    final override fun plus(other: Int128): Int128 {
+    // Supports augmented assignment
+    final override fun plus(other: Int128): Int128 = plus(other, inPlace = false)
+
+    internal fun plus(other: Int128, inPlace: Boolean): Int128 {
         /**
          * Returns true if any of its most significant 32 bits are 1.
          */
@@ -537,12 +455,15 @@ public open class Int128 : CompositeNumber<Int128> {
         val q1 = q1w() + other.q1w() + q2.isNotI32().toInt()
         val q1Low = q1.low
         if (this.sign == other.sign) {
-            if (q1.isNotI32() || (q1Low < 0) xor this.isNegative /* sign bit overflow */) {
+            if (q1.isNotI32() || (q1Low < 0) xor this.isNegative /* signed overflow */) {
                 raiseOverflow("$this + $other")
             }
         }
-        return valueOf(q1Low, q2.low, q3.low, q4.low)
+        return copyOrStore(inPlace, q1Low, q2.low, q3.low, q4.low)
     }
+
+    // Supports augmented assignment
+    final override fun times(other: Int128): Int128 = times(other, inPlace = false)
 
     /*
         0(1) Multiplication of 128-Bit Integers
@@ -587,61 +508,61 @@ public open class Int128 : CompositeNumber<Int128> {
             - a, b, e, & f must be 0 (given that the product can, at most, be 128 bits long), or
             - a, b, & c must be 0, or
             - a, b & e must be zero and the most significant 32 bits must not carry over a bit
-     */
-    final override fun times(other: Int128): Int128 {
+    */
+    internal fun times(other: Int128, inPlace: Boolean): Int128 {
         infix fun Int128.with(sign: Int) = if (sign == -1) -this else this
 
-        fun addMultiply(q1q2partial: Long, q2q3partial: Long, q3q4partial: Long): Int128 {
+        fun Boolean.addMultiply(q1q2partial: Long, q2q3partial: Long, q3q4partial: Long): Int128 {
             val (q1summand, q2summand1) = q1q2partial
             val (q2summand2, q3summand1) = q2q3partial
             val (q3summand2, q4) = q3q4partial
             val q3 = q3summand1 + q3summand2
-            var carry = (addOverflowsInt(q3summand1, q3summand2)).toInt()
+            var carry = (unsignedAddOverflows(q3summand1, q3summand2)).toInt()
             val q2carry = q2summand2 + carry
             val q2 = q2summand1 + q2carry
-            carry = (addOverflowsInt(q2summand1, q2carry) || addOverflowsInt(q2summand1, q2summand2)).toInt()
-            if (addOverflowsValue(q1summand, carry)) {
+            carry = (unsignedAddOverflows(q2summand1, q2carry) || unsignedAddOverflows(q2summand1, q2summand2)).toInt()
+            if (signedAddOverflows(q1summand, carry)) {
                 raiseOverflow()
             }
-            return valueOf(q1summand + carry, q2, q3, q4)
+            return copyOrStore(this, q1summand + carry, q2, q3, q4)
         }
 
-        fun addMultiply(q0q1partial: Long, q1q2partial: Long, q2q3partial: Long, q3q4partial: Long): Int128 {
-            if (q0q1partial.low < 0) {  // Sign bit overflow
+        fun Boolean.addMultiply(q0q1partial: Long, q1q2partial: Long, q2q3partial: Long, q3q4partial: Long): Int128 {
+            if (q0q1partial.low < 0) {  // Signed overflow
                 raiseOverflow()
             }
             val (q1summand1, q2, q3, q4) = addMultiply(q1q2partial, q2q3partial, q3q4partial)
             val q1summand2 = q0q1partial.low
-            if (addOverflowsValue(q1summand1, q1summand2)) {
+            if (signedAddOverflows(q1summand1, q1summand2)) {
                 raiseOverflow()
             }
-            return valueOf(q1summand1 + q1summand2, q2, q3, q4)
+            return copyOrStore(this, q1summand1 + q1summand2, q2, q3, q4)
         }
 
         // dh
-        fun int32TimesInt32(i32a: Int128, i32b: Int128 ): Int128 {
+        fun Boolean.int32TimesInt32(i32a: Int128, i32b: Int128): Int128 {
             val d = i32a.q4.toLong()
             val h = i32b.q4.toLong()
             val dh = d * h
             val blank = blank(dh.sign or 1 /* if zero */)
-            return valueOf(blank, blank, dh.high, dh.low)
+            return copyOrStore(this, blank, blank, dh.high, dh.low)
         }
 
         // cg<<32*2 + (dg + ch)<<32*1 + dh
-        fun int64TimesInt64(i64a: Int128, i64b: Int128): Int128 {
+        fun Boolean.int64TimesInt64(i64a: Int128, i64b: Int128): Int128 {
             val g = i64b.q3w(); val c = i64a.q3w()
             val h = i64b.q4w(); val d = i64a.q4w()
             return addMultiply(c * g, (d * g) + (c * h), d * h)
         }
 
         // de<<32*3 + df<<32*2 + dg<<32*1 + dh
-        fun int32TimesInt128(i32: Int128, i128: Int128): Int128 {
+        fun Boolean.int32TimesInt128(i32: Int128, i128: Int128): Int128 {
             val d = i32.q4w()
             return addMultiply(d * i128.q1w(), d * i128.q2w(), d * i128.q3w(), d * i128.q4w())
         }
 
         // cf<<32*3 + (df + cg)<<32*2 + (dg + ch)<<32*1 + dh
-        fun int64TimesInt96(i64: Int128, i96: Int128): Int128 {
+        fun Boolean.int64TimesInt96(i64: Int128, i96: Int128): Int128 {
             val f = i96.q2w();  val c = i64.q3w()
             val g = i96.q3w();  val d = i64.q4w()
             val h = i96.q4w()
@@ -653,28 +574,35 @@ public open class Int128 : CompositeNumber<Int128> {
         val mag = abs.magnitude()
         val otherAbs = other.abs()
         val otherMag = otherAbs.magnitude()
+        var overflowCause: Throwable? = null
         try {
-            if (otherMag <= 2) when {
-                otherMag == 1 -> {
-                    val product = if (mag == 1) int32TimesInt32(abs, otherAbs) else int32TimesInt128(otherAbs, abs)
-                    return product with sign
+            with (inPlace) {
+                if (otherMag <= 2) when {
+                    otherMag == 1 -> {
+                        val product = if (mag == 1) {
+                            int32TimesInt32(abs, otherAbs)
+                        } else {
+                            int32TimesInt128(otherAbs, abs)
+                        }
+                        return product with sign
+                    }
+                    mag == 2 -> return int64TimesInt64(abs, otherAbs) with sign
+                    mag == 3 -> return int64TimesInt96(otherAbs, abs) with sign
+                    otherAbs stateEquals ONE -> return abs with sign
+                    otherMag == 0 -> return ZERO
                 }
-                mag == 2 -> return int64TimesInt64(abs, otherAbs) with sign
-                mag == 3 -> return int64TimesInt96(otherAbs, abs) with sign
-                otherAbs stateEquals ONE -> return abs with sign
-                otherMag == 0 -> return ZERO
+                // ...otherMag == 3 || otherMag == 4
+                if (mag <= 2) when {
+                    mag == 1 -> return int32TimesInt128(abs, otherAbs) with sign
+                    otherMag == 3 -> return int64TimesInt96(abs, otherAbs) with sign
+                    abs stateEquals ONE -> return otherAbs with sign
+                    mag == 0 -> return ZERO
+                }
             }
-            // ...otherMag == 3 || otherMag == 4
-            if (mag <= 2) when {
-                mag == 1 -> return int32TimesInt128(abs, otherAbs) with sign
-                otherMag == 3 -> return int64TimesInt96(abs, otherAbs) with sign
-                abs stateEquals ONE -> return otherAbs with sign
-                mag == 0 -> return ZERO
-            }
-        } catch (e: CompositeOverflowException) {
-            raiseOverflow("$this * $otherAbs", e)
+        } catch (e: NumericOverflowException) {
+            overflowCause = e
         }
-        raiseOverflow("$this * $otherAbs")
+        raiseOverflow("$this * $otherAbs", overflowCause)
     }
 
     /**
@@ -691,14 +619,16 @@ public open class Int128 : CompositeNumber<Int128> {
     public infix fun divAndRound(other: Int128): Int128 {
         val (quotient, remainder) = this divAndRem other
         val otherDiv2 = other.rightShift(1)
-        return if (remainder < otherDiv2) quotient else with (quotient) { addOne(q1, q2, q3, q4) }
+        return if (remainder < otherDiv2) quotient else quotient.apply { increment(q1, q2, q3, q4, inPlace = false) }
     }
 
     final override fun div(other: Int128): Int128 = divide(other, DivisionType.QUOTIENT)
 
     final override fun rem(other: Int128): Int128 = divide(other, DivisionType.REMAINDER)
 
-    // Shift-subtract algorithm
+    /**
+     * Implementation of the shift-subtract algorithm for division.
+     */
     private fun <T : Any> divide(other: Int128, division: DivisionType): T {
         /**
          * Assumes receiver is positive and magnitude is not 0.
@@ -731,13 +661,13 @@ public open class Int128 : CompositeNumber<Int128> {
         }
         if (this.isLong() && other.isLong()) {
             return division.result(
-                quotient = { valueOf(this.toLong() / other.toLong()) },
-                remainder = { valueOf(this.toLong() % other.toLong()) }
+                quotient = { Int128(this.toLong() / other.toLong()) },
+                remainder = { Int128(this.toLong() % other.toLong()) }
             )
         }
         val sign = productSign(sign, other.sign)
-        val dividend = this.mutable().abs()
-        val divisor = other.mutable().abs()
+        val dividend = this.toMutable().apply { storeAbs() }
+        val divisor = other.toMutable().apply { storeAbs() }
         if (divisor > dividend) {
             return division.result(
                 quotient = { ZERO },
@@ -745,21 +675,21 @@ public open class Int128 : CompositeNumber<Int128> {
             )
         }
         var bitAlign = divisor.countLeadingZeroBits() - dividend.countLeadingZeroBits()
-        divisor/* = */.leftShift(bitAlign)
-        val quotient: Int128 = MutableInt128(ZERO)
+        divisor.storeLeftShift(bitAlign)
+        val quotient = MutableInt128(ZERO)
         do {
-            quotient/* = */.leftShift(1)
-            if (dividend.valueCompareTo(divisor) >= 0) {
-                dividend -/* = */ divisor.immutable()   // May be mutated by minus()
-                with (quotient) { addOne(q1, q2, q3, q4) }  // ++quotient
+            quotient.storeLeftShift(1)
+            if (dividend.compareValue(divisor) >= 0) {
+                dividend -= divisor.copy()
+                quotient.increment()
             }
-            divisor/* = */.unsignedRightShift(1)
+            divisor.storeUnsignedRightShift(1)
            --bitAlign
         } while (bitAlign >= 0)
         return division.result(
             quotient = {
                 if (sign == -1) {
-                    /* quotient = */ -quotient
+                    quotient.storeNegate()
                 }
                 out(quotient)
             },
@@ -772,7 +702,7 @@ public open class Int128 : CompositeNumber<Int128> {
     /**
      * Assumes that [isPositive]` == other.isPositive`.
      */
-    private fun valueCompareTo(other: Int128): Int {
+    internal fun compareValue(other: Int128): Int {
         var difference = q1.compareTo(other.q1)
         if (difference != 0) {
             return difference
@@ -792,7 +722,7 @@ public open class Int128 : CompositeNumber<Int128> {
         return when {
             this.isNegative && other.isPositive -> -1
             this.isPositive && other.isNegative -> 1
-            else -> valueCompareTo(other)
+            else -> compareValue(other)
         }
     }
 
@@ -851,8 +781,8 @@ public open class Int128 : CompositeNumber<Int128> {
             return "0"
         }
         val base = radix.toInt128()
-        val sign = this.sign    // May be mutated by abs()
-        var value = this.abs().immutable()
+        val sign = this.sign
+        var value = this.abs()
         return buildString {
             while (!value.stateEquals(ZERO)) {
                 val (shiftedValue, digit) = value.divAndRem(base)
@@ -876,7 +806,7 @@ public open class Int128 : CompositeNumber<Int128> {
     final override fun toComplex(): Complex = Complex(toRational(), Rational.ZERO)
 
     final override fun toRational(): Rational {
-        return ScaledLong(this).let { (numer, scale) -> Rational(numer, 1L, scale, sign) }
+        return ScaledLong(this).let { (numer, scale) -> Rational(numer, 1, scale, sign) }
     }
 
     /**
@@ -907,24 +837,21 @@ public open class Int128 : CompositeNumber<Int128> {
 
         public const val SIZE_BYTES: Int = 128 / Byte.SIZE_BITS
 
-        @Suppress("ConstPropertyName")
-        private const val serialVersionUID = 1L
-
         private class ConstantInt128(
             q1: Int,
             q2: Int,
             q3: Int,
             q4: Int,
             override val stringLiteral: String
-        ) : Int128(q1, q2, q3, q4, PrivateAPIFlag), Constant {
+        ) : Int128(q1, q2, q3, q4), Constant {
             override fun toString() = stringLiteral
         }
 
         /**
          * Returns the factorial of [x] as a 128-bit integer.
          *
-         * @throws CompositeUndefinedException x is non-negative
-         * @throws CompositeOverflowException the result overflows
+         * @throws NumericUndefinedException x is non-negative
+         * @throws NumericOverflowException the result overflows
          */
         @JvmStatic
         public fun factorial(x: Int): Int128 {
@@ -953,46 +880,25 @@ public open class Int128 : CompositeNumber<Int128> {
          */
         private fun q(qLast: Int, qCur: Int, qShift: Int) = (qLast shl (Int.SIZE_BITS - qShift)) or (qCur ushr qShift)
 
-        // ---------------------------------------- string conversion ----------------------------------------
+        // ---------------------------------------- helpers ----------------------------------------
 
         /**
-         * Intended for access by `String`-arg pseudo-constructor and [ScaledLong] constructor only.
+         * Multiplies the two 64-bit integers and stores the result accurately within a 128-bit integer.
          */
-        internal fun parse(
-            s: String,
-            radix: Int,
-            start: Int,
-            endExclusive: Int
-        ): MutableInt128 {
-            val first = try {
-                s[start]
-            } catch (e: StringIndexOutOfBoundsException) {
-                raiseIncorrectFormat("empty string", s)
-            }
-            var cursor = endExclusive - 1
-            val startIndex = start + (first == '-').toInt()
-            val digit = MutableInt128(ZERO)
-            val value = MutableInt128(ZERO)
-            var pow = ONE
-            val increment = radix.toInt128()
-            while (cursor >= startIndex) try {
-                if (s[cursor] !in '0'..'9') {
-                    raiseIncorrectFormat("illegal embedded character", s)
+        internal fun multiply(x: Long, y: Long): Int128 {
+            fun signedTimesOverflows(x: Long, y: Long, product: Long = x * y): Boolean {
+                if (x == Long.MIN_VALUE && y == -1L || y == Long.MIN_VALUE && x == -1L) {
+                    return true
                 }
-                digit/* = */.valueOf(s[cursor].digitToInt(radix))
-                value +/* = */ (digit */* (maybe) = */ pow)
-                pow *= increment
-                --cursor
-            } catch (e: IllegalArgumentException) {
-                raiseIncorrectFormat("illegal digit", s, e)
-            } catch (e: CompositeOverflowException) {
-                raiseOverflow(s.substring(start, endExclusive), e)
+                return x != 0L && y != 0L && x != product / y
             }
-            val result = if (startIndex != start) /* value = */ -value else value
-            return result as MutableInt128
-        }
 
-        // ---------------------------------------- helpers ----------------------------------------
+            val product = x * y
+            if (signedTimesOverflows(x, y, product)) {
+                return Int128(x) * Int128(y)
+            }
+            return Int128(product)
+        }
 
         /**
          * The most significant 32 bits of this value.
@@ -1014,6 +920,23 @@ public open class Int128 : CompositeNumber<Int128> {
          */
         private operator fun Long.component2() = low
 
+        /**
+         * Returns a 128-bit integer with its lowest 32 bits equivalent to the given value.
+         *
+         * Performs the same widening conversion as a primitive type would.
+         * As such, the sign of the original value is preserved.
+         * If this value is associated with a reusable constant, that instance is returned instead.
+         */
+        private fun Int.toInt128(): Int128 = when (this) {
+            -1 -> NEGATIVE_ONE
+            0 -> ZERO
+            1 -> ONE
+            2 -> TWO
+            10 -> TEN
+            16 -> SIXTEEN
+            else -> Int128(this)
+        }
+
         private fun Int.widen() = this.toUInt().toLong()
 
         private fun ensureValidShift(bitCount: Int) {
@@ -1022,16 +945,18 @@ public open class Int128 : CompositeNumber<Int128> {
 
         /**
          * Returns true if the sum is the result of an unsigned integer overflow.
+         * @see signedAddOverflows
          */
-        private fun addOverflowsInt(x: Int, y: Int) = (x.widen() + y.widen()) > UInt.MAX_VALUE.toLong()
+        private fun unsignedAddOverflows(x: Int, y: Int) = (x.widen() + y.widen()) > UInt.MAX_VALUE.toLong()
 
         /**
          * Returns true if the sum is the result of a signed integer overflow.
          *
          * If a result of multiple additions must be checked, this function must be called for each intermediate sum.
          * Also checks for the case [Int.MIN_VALUE] - 1.
+         * @see unsignedAddOverflows
          */
-        private fun addOverflowsValue(x: Int, y: Int): Boolean {
+        private fun signedAddOverflows(x: Int, y: Int): Boolean {
             val sum = x.toLong() + y
             return if (sum < 0L) sum < Int.MIN_VALUE else sum > Int.MAX_VALUE
         }
