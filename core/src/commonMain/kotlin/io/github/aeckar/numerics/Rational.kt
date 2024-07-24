@@ -1,27 +1,21 @@
-@file:JvmName("Numerics")
-@file:JvmMultifileClass
+@file:kotlin.jvm.JvmName("Numerics")
+@file:kotlin.jvm.JvmMultifileClass
 package io.github.aeckar.numerics
 
-import io.github.aeckar.JsName
 import io.github.aeckar.numerics.functions.exp
 import io.github.aeckar.numerics.functions.floor
 import io.github.aeckar.numerics.functions.ln
 import io.github.aeckar.numerics.serializers.RationalSerializer
 import io.github.aeckar.numerics.utils.*
-import kotlinx.serialization.Serializable
-import kotlin.concurrent.Volatile
-import kotlin.jvm.JvmMultifileClass
-import kotlin.jvm.JvmName
 import kotlin.jvm.JvmOverloads
 import kotlin.jvm.JvmStatic
 import kotlin.math.absoluteValue
 import kotlin.math.sign
-import kotlin.random.Random
 
 /**
  * Returns a random rational number.
  */
-public fun Random.nextRational(): Rational {
+public fun kotlin.random.Random.nextRational(): Rational {
     val sign = nextInt(-1, 2) or 1 /* if zero */
     return Rational(sign * nextLong(), nextLong(), nextInt())
 }
@@ -50,7 +44,6 @@ public fun Random.nextRational(): Rational {
  * @throws NumericFormatException [s] is in an incorrect format
  * @throws NumericOverflowException the value cannot be represented accurately as a rational number
  */
-@JvmName("newInstance")
 public fun Rational(s: String): Rational {
     fun parseExponent(view: StringView): Int {
         val sign = if (view.char() == '-') (-1).also { view.move(1) } else 1
@@ -172,7 +165,7 @@ public fun Rational(s: String): Rational {
  * Furthermore, all values are guaranteed to be accurate to at least 18 digits
  * before considering error accumulated through calls to multiple operations.
  */
-@Serializable(with = RationalSerializer::class)
+@kotlinx.serialization.Serializable(with = RationalSerializer::class)
 @Suppress("EqualsOrHashCode")
 public open class Rational : Real<Rational> {
     /**
@@ -911,7 +904,7 @@ public open class Rational : Real<Rational> {
          */
         private const val LONG_MIN_SCALE = -17
 
-        @Volatile private var factorialCache = arrayOf(ONE, ONE, TWO)
+        @kotlin.concurrent.Volatile private var factorialCache = arrayOf(ONE, ONE, TWO)
 
         private class ConstantRational(
             numer: Long,

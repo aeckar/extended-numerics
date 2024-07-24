@@ -1,12 +1,10 @@
 package io.github.aeckar.numerics
 
-
 private fun Any.name() = when (this) {
     is Rational, is Rational.Companion -> "Rational number"
     is Int128, is Int128.Companion -> "128-bit integer"
     is Matrix -> "Matrix"
     is Table<*> -> "Table"
-    is Vector -> "Vector"
     else -> "Value" // Receiver is top-level function
 }
 

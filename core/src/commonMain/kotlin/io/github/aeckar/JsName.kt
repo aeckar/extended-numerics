@@ -9,4 +9,4 @@ import kotlin.annotation.AnnotationTarget.*
  */
 @Target(CLASS, FUNCTION, PROPERTY, CONSTRUCTOR, PROPERTY_GETTER, PROPERTY_SETTER)
 @Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
-public expect annotation class JsName(val name: String)
+public expect annotation class JsName(val name: String) // TODO remove if not needed

@@ -1,0 +1,8 @@
+<component name="ArtifactManager">
+  <artifact type="jar" name="core-jvm-1.0.0-RC">
+    <output-path>$PROJECT_DIR$/core/build/libs</output-path>
+    <root id="archive" name="core-jvm-1.0.0-RC.jar">
+      <element id="module-output" name="extended-numerics.core.jvmMain" />
+    </root>
+  </artifact>
+</component>

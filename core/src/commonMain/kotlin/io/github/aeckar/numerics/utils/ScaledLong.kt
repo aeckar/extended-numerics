@@ -1,11 +1,10 @@
 package io.github.aeckar.numerics.utils
 
 import io.github.aeckar.numerics.Int128
-import io.github.aeckar.numerics.Rational
 import io.github.aeckar.numerics.raiseIncorrectFormat
 
 /**
- * Destructuring of a non-negative value into the closest scaled 64-bit integer to this and its scale.
+ * The closest scaled 64-bit integer to a non-negative value paired to its scale.
  */
 internal class ScaledLong {
     private val value: Long
@@ -16,24 +15,24 @@ internal class ScaledLong {
      *
      * Some information may be lost during conversion.
      */
-    constructor(i128: Int128, scaleAugment: Int = 0) {
-        if (i128.compareTo(Long.MIN_VALUE) == 0) {
+    constructor(x: Int128, scaleAugment: Int = 0) {
+        if (x.compareTo(Long.MIN_VALUE) == 0) {
             this.value = LONG_MIN.value
             this.scale = LONG_MIN.scale
             return
         }
-        if (i128.isLong()) {
-            val scaledValue = i128.toLong()
+        if (x.isLong()) {
+            val scaledValue = x.toLong()
             val valueScale = scaleOf(scaledValue)
             this.value = scaledValue / tenPow(valueScale)
             this.scale = valueScale + scaleAugment
             return
         }
-        val sign = i128.sign
-        var value = /* (maybe) i128 = */ i128.abs()
+        val sign = x.sign
+        var value = x.abs()
         var scale = scaleAugment
         while (value > Long.MAX_VALUE) {
-            /* (maybe) value = */ value /= Int128.TEN
+            value /= Int128.TEN
             ++scale
         }
         this.value = value.toLong() * sign
@@ -120,7 +119,7 @@ internal class ScaledLong {
             val trailingZeros = stopIndex - index() - 1
             scale += trailingZeros + (dotIndex in index()..stopIndex).toInt()
             var length = index() - start + (dotIndex != -1).toInt() + 1
-            if (length >= LONG_MAX_STRING.length) {
+            if (length >= LONG_MAX_STRING.length) { // TODO FIX HERE!
                 val startingLength = length
                 while (length != LONG_MAX_STRING.length) {  // Scale down to a length that can possibly fit a Long
                     if (char() == '.') {                    // Skip digit to the left
@@ -133,18 +132,16 @@ internal class ScaledLong {
                 var rightmostDigitOrDot = index()
                 move(start - index())
                 do {    // Ensure possible Long value does not overflow
+                    val max = LONG_MAX_STRING[index() - start]
                     if (char() == '.') {
                         move(1) // Always within bounds
-                        if (isNotWithinBounds()) {
-                            break
-                        }
                     }
-                    if (char() > LONG_MAX_STRING[index() - start]) {   // Value overflows, scale down by 1
+                    if (char() > max) {   // Value overflows, scale down by 1
                         --rightmostDigitOrDot
                         --length
                         break
                     }
-                    if (index() == rightmostDigitOrDot) {
+                    if (char() < max || index() == rightmostDigitOrDot) {
                         break
                     }
                     move(1)
